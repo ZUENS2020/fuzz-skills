@@ -17,7 +17,7 @@ Build and run:
 
 ```bash
 docker build -t gcc-skill:latest .
-docker run --rm -p 8000:8000 gcc-skill:latest
+docker run -p 8000:8000 -e GCC_DATA_DIR=/data -v gcc_skill_data:/data gcc-skill:latest
 ```
 
 Or with compose:
@@ -283,5 +283,6 @@ gcc_reset     -> /reset
 
 - 必须安装 git 并确保在 PATH 中可用。
 - session_id 为空时默认使用 "default"。
+- 容器内建议使用 GCC_DATA_DIR 指向挂载卷，避免数据随容器删除而丢失。
 - git 操作日志会写入 .GCC/sessions/<session_id>/git.log。
 - 所有文件均为纯文本；metadata 使用 YAML。

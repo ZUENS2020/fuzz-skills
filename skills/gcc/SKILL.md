@@ -24,6 +24,7 @@ HTTP API server that implements the Git-Context-Controller (GCC) memory system f
 - Python: pip install -e .
 - Run: uvicorn gcc_skill.server:app --host 0.0.0.0 --port 8000
 - MCP: set GCC_SERVER_URL=http://localhost:8000 && gcc-mcp
+- Docker: use GCC_DATA_DIR with a volume to keep data persistent
 
 ## Notes
 - All operations write to a .GCC/ folder under the provided project root.

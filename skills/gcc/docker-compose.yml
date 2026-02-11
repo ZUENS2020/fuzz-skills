@@ -3,3 +3,10 @@ services:
     build: .
     ports:
       - "8000:8000"
+    volumes:
+      - gcc_skill_data:/data
+    environment:
+      - GCC_DATA_DIR=/data
+
+volumes:
+  gcc_skill_data:

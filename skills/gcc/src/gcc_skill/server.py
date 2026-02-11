@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -89,6 +90,9 @@ class ResetRequest(BaseModel):
 
 
 def _path(root: str) -> Path:
+    base = os.environ.get("GCC_DATA_DIR")
+    if base:
+        return (Path(base) / root).expanduser().resolve()
     return Path(root).expanduser().resolve()
 
 
