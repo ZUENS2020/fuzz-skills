@@ -58,59 +58,141 @@ Request:
 }
 ```
 
-### POST /branch
-Create a branch and its files.
+# GCC Context Controller (HTTP + MCP)
 
-Request:
+本项目实现论文中的 Git-Context-Controller (GCC) 记忆系统，并提供 HTTP API 与 MCP stdio 代理两种使用方式。系统会把记忆写入 .GCC/ 目录，并在每次记忆变更时写入 git 提交，便于回溯、对比和回滚。
+
+每个会话由 session_id 隔离，路径为 .GCC/sessions/<session_id>/。每个会话内部是一个独立的 git 仓库，COMMIT/BRANCH/MERGE 等操作会映射为真实的 git 提交或合并。
+
+## 功能概览
+
+- 结构化记忆：main.md、commit.md、log.md、metadata.yaml
+- 分支隔离与合并：BRANCH/MERGE 对应 git 分支与合并
+- 记忆变更追踪：每次记忆变更产生 git commit
+- 变更回看：history/diff/show/reset
+- 多会话隔离：session_id 互不干扰
+
+## 目录结构
+
+```
+.GCC/
+  sessions/
+    <session_id>/
+      main.md
+      branches/
+        <branch>/
+          commit.md
+          log.md
+          metadata.yaml
+      .git/
+      git.log
+```
+
+## 运行方式（本地）
+
+```bash
+pip install -e .
+uvicorn gcc_skill.server:app --host 0.0.0.0 --port 8000
+```
+
+## 运行方式（Docker）
+
+```bash
+docker build -t gcc-skill:latest .
+docker run --rm -p 8000:8000 gcc-skill:latest
+```
+
+或使用 compose：
+
+```bash
+docker compose up --build
+```
+
+## MCP 代理
+
+本项目包含 stdio MCP 代理（gcc-mcp），负责把 MCP 工具调用转发到 HTTP 服务器。
+
+启动 HTTP 服务后：
+
+```bash
+set GCC_SERVER_URL=http://localhost:8000
+gcc-mcp
+```
+
+如果你使用 Claude Code：
+
+```bash
+claude mcp add --scope user --transport stdio gcc -- gcc-mcp
+```
+
+## HTTP API
+
+### POST /init
+初始化会话与 .GCC 结构。
+
+请求：
+```json
+{
+  "root": "C:/path/to/project",
+  "goal": "项目目标",
+  "todo": ["任务1", "任务2"],
+  "session_id": "claude-1"
+}
+```
+
+### POST /branch
+创建分支并生成 commit/log/metadata 文件。
+
+请求：
 ```json
 {
   "root": "C:/path/to/project",
   "branch": "experiment-a",
-  "purpose": "Explore an alternative approach",
+  "purpose": "探索一个替代方案",
   "session_id": "claude-1"
 }
 ```
 
 ### POST /commit
-Record a milestone with a structured commit entry.
+提交一次结构化记忆检查点。
 
-Request:
+请求：
 ```json
 {
   "root": "C:/path/to/project",
   "branch": "experiment-a",
-  "contribution": "Implemented parser and added tests",
-  "purpose": "Optional if branch already exists",
-  "log_entries": ["Observed X", "Action Y"],
+  "contribution": "实现解析器并添加测试",
+  "purpose": "如果分支尚不存在才需要",
+  "log_entries": ["Observation A", "Action B"],
   "metadata_updates": {"file_structure": {"src/": "core"}},
-  "update_main": "Updated milestone list",
+  "update_main": "更新里程碑",
   "session_id": "claude-1"
 }
 ```
 
 ### POST /merge
-Merge one branch into another (default target is main).
+合并一个分支到目标分支（默认 main）。
 
-Request:
+请求：
 ```json
 {
   "root": "C:/path/to/project",
   "source_branch": "experiment-a",
   "target_branch": "main",
-  "summary": "Merged parser implementation",
+  "summary": "合并解析器实现",
   "session_id": "claude-1"
 }
 ```
 
 ### POST /context
-Retrieve structured context.
+读取结构化上下文。
 
-Request:
+请求：
 ```json
 {
   "root": "C:/path/to/project",
   "branch": "experiment-a",
-  "commit_id": "optional",
+  "commit_id": "可选",
   "log_tail": 20,
   "metadata_segment": "file_structure",
   "session_id": "claude-1"
@@ -118,9 +200,9 @@ Request:
 ```
 
 ### POST /log
-Append OTA log entries to a branch log.
+追加 OTA 日志。
 
-Request:
+请求：
 ```json
 {
   "root": "C:/path/to/project",
@@ -128,11 +210,12 @@ Request:
   "entries": ["Observation", "Thought", "Action"],
   "session_id": "claude-1"
 }
+```
 
 ### POST /history
-List git history for the session repository.
+查看会话 git 提交历史。
 
-Request:
+请求：
 ```json
 {
   "root": "C:/path/to/project",
@@ -142,9 +225,9 @@ Request:
 ```
 
 ### POST /diff
-Show git diff between two refs (memory changes).
+对比两次记忆变更的差异。
 
-Request:
+请求：
 ```json
 {
   "root": "C:/path/to/project",
@@ -155,9 +238,9 @@ Request:
 ```
 
 ### POST /show
-Show file content at a git ref (view memory before changes).
+查看某个版本的文件内容（记忆回看）。
 
-Request:
+请求：
 ```json
 {
   "root": "C:/path/to/project",
@@ -168,9 +251,9 @@ Request:
 ```
 
 ### POST /reset
-Reset the session git repo to a ref.
+回滚到指定版本（soft 或 hard）。
 
-Request:
+请求：
 ```json
 {
   "root": "C:/path/to/project",
@@ -180,10 +263,25 @@ Request:
   "session_id": "claude-1"
 }
 ```
+
+## MCP 工具（对应 HTTP）
+
+```
+gcc_init      -> /init
+gcc_branch    -> /branch
+gcc_commit    -> /commit
+gcc_merge     -> /merge
+gcc_context   -> /context
+gcc_log       -> /log
+gcc_history   -> /history
+gcc_diff      -> /diff
+gcc_show      -> /show
+gcc_reset     -> /reset
 ```
 
-## Notes
-- The .GCC/ layout matches the paper specification.
-- session_id isolates multiple agent sessions under one server.
-- Git must be installed and available on PATH.
-- All files are plain text; metadata is YAML.
+## 注意事项
+
+- 必须安装 git 并确保在 PATH 中可用。
+- session_id 为空时默认使用 "default"。
+- git 操作日志会写入 .GCC/sessions/<session_id>/git.log。
+- 所有文件均为纯文本；metadata 使用 YAML。

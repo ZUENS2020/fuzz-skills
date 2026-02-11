@@ -13,7 +13,7 @@ DEFAULT_SERVER_URL = "http://localhost:8000"
 TOOLS = [
     {
         "name": "gcc_init",
-        "description": "Initialize a .GCC/ session store",
+        "description": "Initialize a session memory store under .GCC/sessions/<session_id>/. Creates main.md (goal + todo) and prepares a git-backed workspace for memory commits.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -27,7 +27,7 @@ TOOLS = [
     },
     {
         "name": "gcc_branch",
-        "description": "Create a branch for a session",
+        "description": "Create a memory branch within the session. Writes commit.md/log.md/metadata.yaml and creates a git branch for isolated exploration.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -41,7 +41,7 @@ TOOLS = [
     },
     {
         "name": "gcc_commit",
-        "description": "Record a structured commit entry",
+        "description": "Record a structured memory checkpoint. Appends to commit.md, optionally adds OTA log entries and metadata updates, updates main.md, and creates a git commit.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -59,7 +59,7 @@ TOOLS = [
     },
     {
         "name": "gcc_merge",
-        "description": "Merge one branch into another",
+        "description": "Merge a source memory branch into a target branch (default main). Performs git merge and updates main.md plus merged commit/log/metadata content.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -74,7 +74,7 @@ TOOLS = [
     },
     {
         "name": "gcc_context",
-        "description": "Retrieve structured context",
+        "description": "Retrieve structured context at multiple levels: project overview, branch summaries, commit entry, log tail, or a metadata segment.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -90,7 +90,7 @@ TOOLS = [
     },
     {
         "name": "gcc_log",
-        "description": "Append OTA log entries",
+        "description": "Append fine-grained OTA log entries to branch log.md and record a git commit for traceability.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -104,7 +104,7 @@ TOOLS = [
     },
     {
         "name": "gcc_history",
-        "description": "List git history for a session",
+        "description": "List git commit history for the session repository. Each entry reflects a memory change checkpoint.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -117,7 +117,7 @@ TOOLS = [
     },
     {
         "name": "gcc_diff",
-        "description": "Show diff between two git refs",
+        "description": "Show git diff between two refs to compare memory changes (e.g., HEAD~1..HEAD).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -131,7 +131,7 @@ TOOLS = [
     },
     {
         "name": "gcc_show",
-        "description": "Show a file or commit content at a git ref",
+        "description": "Show file content at a git ref (e.g., main.md or branches/<branch>/commit.md) to inspect memory before/after changes.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -145,7 +145,7 @@ TOOLS = [
     },
     {
         "name": "gcc_reset",
-        "description": "Reset the session git repo to a ref",
+        "description": "Reset the session git repo to a ref. Use mode=soft or hard; hard reset requires confirm=true.",
         "inputSchema": {
             "type": "object",
             "properties": {

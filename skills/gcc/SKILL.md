@@ -9,7 +9,16 @@ HTTP API server that implements the Git-Context-Controller (GCC) memory system f
 
 ## Tools
 - HTTP endpoints: /init, /branch, /commit, /merge, /context, /log, /history, /diff, /show, /reset (all accept optional session_id; default is "default")
-- MCP proxy tools: gcc_init, gcc_branch, gcc_commit, gcc_merge, gcc_context, gcc_log, gcc_history, gcc_diff, gcc_show, gcc_reset
+- MCP proxy tools (detailed): gcc_init initializes .GCC/sessions/<session_id>/, creates main.md and git repo
+- gcc_branch creates branch files and a git branch for isolated memory work
+- gcc_commit writes structured commit.md, updates log/metadata/main, and git commits
+- gcc_merge merges memory branches and updates main.md plus git merge
+- gcc_context reads project/branch/commit/log/metadata views
+- gcc_log appends OTA logs and commits them
+- gcc_history lists git history for memory checkpoints
+- gcc_diff diffs memory changes between refs
+- gcc_show shows memory files at a ref
+- gcc_reset resets memory to a ref (soft/hard)
 
 ## Install
 - Python: pip install -e .
