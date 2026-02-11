@@ -5,7 +5,10 @@ WORKDIR /app
 COPY pyproject.toml /app/pyproject.toml
 COPY src /app/src
 
-RUN pip install --no-cache-dir --upgrade pip \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir .
 
 EXPOSE 8000
