@@ -17,7 +17,8 @@ Build and run:
 
 ```bash
 docker build -t gcc-skill:latest .
-docker run -p 8000:8000 -e GCC_DATA_DIR=/data -v gcc_skill_data:/data gcc-skill:latest
+docker volume create gcc_data
+docker run --rm -p 8000:8000 -e GCC_DATA_ROOT=/data -v gcc_data:/data gcc-skill:latest
 ```
 
 Or with compose:
@@ -112,10 +113,19 @@ docker compose up --build
 
 本项目包含 stdio MCP 代理（gcc-mcp），负责把 MCP 工具调用转发到 HTTP 服务器。
 
+代理会在未提供 session_id 时自动生成并复用一个会话标识。你也可以通过 GCC_SESSION_ID 手动指定。
+
 启动 HTTP 服务后：
 
 ```bash
 set GCC_SERVER_URL=http://localhost:8000
+gcc-mcp
+```
+
+指定会话 ID：
+
+```bash
+set GCC_SESSION_ID=claude-1
 gcc-mcp
 ```
 
@@ -133,7 +143,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "goal": "项目目标",
   "todo": ["任务1", "任务2"],
   "session_id": "claude-1"
@@ -146,7 +156,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "branch": "experiment-a",
   "purpose": "探索一个替代方案",
   "session_id": "claude-1"
@@ -159,7 +169,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "branch": "experiment-a",
   "contribution": "实现解析器并添加测试",
   "purpose": "如果分支尚不存在才需要",
@@ -176,7 +186,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "source_branch": "experiment-a",
   "target_branch": "main",
   "summary": "合并解析器实现",
@@ -190,7 +200,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "branch": "experiment-a",
   "commit_id": "可选",
   "log_tail": 20,
@@ -205,7 +215,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "branch": "experiment-a",
   "entries": ["Observation", "Thought", "Action"],
   "session_id": "claude-1"
@@ -218,7 +228,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "limit": 20,
   "session_id": "claude-1"
 }
@@ -230,7 +240,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "from_ref": "HEAD~1",
   "to_ref": "HEAD",
   "session_id": "claude-1"
@@ -243,7 +253,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "ref": "HEAD~1",
   "path": "main.md",
   "session_id": "claude-1"
@@ -256,7 +266,7 @@ claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 请求：
 ```json
 {
-  "root": "C:/path/to/project",
+  "root": "workspace/demo",
   "ref": "HEAD~1",
   "mode": "hard",
   "confirm": true,
@@ -281,8 +291,9 @@ gcc_reset     -> /reset
 
 ## 注意事项
 
+- 容器模式推荐使用持久卷并设置 GCC_DATA_ROOT=/data，防止数据丢失。
+- root 建议使用相对路径（例如 workspace/demo），会映射到容器数据根目录。
 - 必须安装 git 并确保在 PATH 中可用。
 - session_id 为空时默认使用 "default"。
-- 容器内建议使用 GCC_DATA_DIR 指向挂载卷，避免数据随容器删除而丢失。
 - git 操作日志会写入 .GCC/sessions/<session_id>/git.log。
 - 所有文件均为纯文本；metadata 使用 YAML。

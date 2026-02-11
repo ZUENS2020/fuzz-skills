@@ -90,9 +90,9 @@ class ResetRequest(BaseModel):
 
 
 def _path(root: str) -> Path:
-    base = os.environ.get("GCC_DATA_DIR")
+    base = os.environ.get("GCC_DATA_ROOT")
     if base:
-        return (Path(base) / root).expanduser().resolve()
+        return (Path(base) / root.lstrip("/\\")).resolve()
     return Path(root).expanduser().resolve()
 
 

@@ -8,7 +8,9 @@ from typing import Any, Dict, Optional
 import httpx
 
 SERVER_URL_ENV = "GCC_SERVER_URL"
+SESSION_ID_ENV = "GCC_SESSION_ID"
 DEFAULT_SERVER_URL = "http://localhost:8000"
+DEFAULT_SESSION_ID = None
 
 TOOLS = [
     {
@@ -165,6 +167,23 @@ def _server_url() -> str:
     return os.environ.get(SERVER_URL_ENV, DEFAULT_SERVER_URL).rstrip("/")
 
 
+def _default_session_id() -> str:
+    env_value = os.environ.get(SESSION_ID_ENV)
+    if env_value:
+        return env_value
+    global DEFAULT_SESSION_ID
+    if DEFAULT_SESSION_ID is None:
+        DEFAULT_SESSION_ID = f"mcp-{os.getpid()}"
+    return DEFAULT_SESSION_ID
+
+
+def _ensure_session_id(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    if "session_id" not in arguments or not arguments.get("session_id"):
+        arguments = dict(arguments)
+        arguments["session_id"] = _default_session_id()
+    return arguments
+
+
 def _post(path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     url = f"{_server_url()}{path}"
     with httpx.Client(timeout=30.0) as client:
@@ -188,7 +207,8 @@ def _handle_tools_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, A
     }
     if tool_name not in mapping:
         raise ValueError(f"Unknown tool: {tool_name}")
-    return _post(mapping[tool_name], arguments)
+    payload = _ensure_session_id(arguments)
+    return _post(mapping[tool_name], payload)
 
 
 def _write_response(payload: Dict[str, Any]) -> None:
