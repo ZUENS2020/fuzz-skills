@@ -12,6 +12,12 @@ SESSION_ID_ENV = "GCC_SESSION_ID"
 DEFAULT_SERVER_URL = "http://localhost:8000"
 DEFAULT_SESSION_ID = None
 
+COMMIT_PROMPT_GUIDE = (
+    "Commit guidance: every gcc_commit should include a clear contribution summary, "
+    "key observations/actions in log_entries, and any file/module changes in metadata_updates. "
+    "Update main milestones via update_main when needed."
+)
+
 TOOLS = [
     {
         "name": "gcc_init",
@@ -43,7 +49,8 @@ TOOLS = [
     },
     {
         "name": "gcc_commit",
-        "description": "Record a structured memory checkpoint. Appends to commit.md, optionally adds OTA log entries and metadata updates, updates main.md, and creates a git commit.",
+        "description": "Record a structured memory checkpoint. Appends to commit.md, optionally adds OTA log entries and metadata updates, updates main.md, and creates a git commit. "
+        + COMMIT_PROMPT_GUIDE,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -171,6 +178,23 @@ def _default_session_id() -> str:
     env_value = os.environ.get(SESSION_ID_ENV)
     if env_value:
         return env_value
+
+    # Try to get container ID from Docker environment
+    # /proc/self/cgroup contains container ID in Docker
+    # Container ID is typically first 12 chars of the hostname in containers
+    try:
+        # Method 1: Check hostname (Docker sets hostname to container ID)
+        hostname = os.environ.get("HOSTNAME", "")
+        if hostname and len(hostname) >= 12:
+            # Container IDs are typically 64 hex chars, use first 12
+            global DEFAULT_SESSION_ID
+            if DEFAULT_SESSION_ID is None:
+                DEFAULT_SESSION_ID = f"container-{hostname[:12]}"
+            return DEFAULT_SESSION_ID
+    except Exception:
+        pass
+
+    # Fallback to process ID
     global DEFAULT_SESSION_ID
     if DEFAULT_SESSION_ID is None:
         DEFAULT_SESSION_ID = f"mcp-{os.getpid()}"
@@ -212,7 +236,8 @@ def _handle_tools_call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, A
 
 
 def _write_response(payload: Dict[str, Any]) -> None:
-    sys.stdout.write(json.dumps(payload) + "\n")
+    # Use ensure_ascii=False to properly handle Unicode characters (e.g., Chinese)
+    sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
     sys.stdout.flush()
 
 
@@ -236,16 +261,25 @@ def main() -> None:
             params = request.get("params") or {}
 
             if method == "initialize":
+                protocol = params.get("protocolVersion") if isinstance(params, dict) else None
+                protocol = protocol or "2024-11-05"
                 _write_response(
                     {
                         "jsonrpc": "2.0",
                         "id": request_id,
                         "result": {
+                            "protocolVersion": protocol,
                             "serverInfo": {"name": "gcc-mcp", "version": "0.1.0"},
                             "capabilities": {"tools": {}},
                         },
                     }
                 )
+                continue
+
+            if method in ("initialized", "notifications/initialized") or (
+                isinstance(method, str) and method.startswith("notifications/")
+            ):
+                # Notifications do not expect a response.
                 continue
 
             if method == "tools/list":
@@ -258,6 +292,18 @@ def main() -> None:
                 )
                 continue
 
+            if method == "ping":
+                _write_response({"jsonrpc": "2.0", "id": request_id, "result": {}})
+                continue
+
+            if method == "resources/list":
+                _write_response({"jsonrpc": "2.0", "id": request_id, "result": {"resources": []}})
+                continue
+
+            if method == "prompts/list":
+                _write_response({"jsonrpc": "2.0", "id": request_id, "result": {"prompts": []}})
+                continue
+
             if method == "tools/call":
                 tool_name = params.get("name")
                 arguments = params.get("arguments") or {}
@@ -266,7 +312,7 @@ def main() -> None:
                     {
                         "jsonrpc": "2.0",
                         "id": request_id,
-                        "result": {"content": [{"type": "text", "text": json.dumps(result)}]},
+                        "result": {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]},
                     }
                 )
                 continue
@@ -275,9 +321,11 @@ def main() -> None:
                 _write_response({"jsonrpc": "2.0", "id": request_id, "result": {}})
                 break
 
-            _write_response(_error_response(request_id, f"Unsupported method: {method}"))
+            if request_id is not None:
+                _write_response(_error_response(request_id, f"Unsupported method: {method}"))
         except Exception as exc:
-            _write_response(_error_response(None, str(exc)))
+            if "request_id" in locals() and request_id is not None:
+                _write_response(_error_response(request_id, str(exc)))
 
 
 if __name__ == "__main__":

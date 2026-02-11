@@ -135,6 +135,20 @@ gcc-mcp
 claude mcp add --scope user --transport stdio gcc -- gcc-mcp
 ```
 
+## AI 提交要求（Prompt 建议）
+
+为了让记忆提交内容结构化、可追溯，建议在提示词中明确要求 AI 每次调用提交工具时给出以下信息：
+
+- 必填：本次完成了什么（contribution）
+- 必填：关联的分支（branch）与会话（session_id，MCP 默认自动填）
+- 建议：关键决策与原因（写入 log_entries）
+- 建议：重要文件/模块变化（写入 metadata_updates）
+- 可选：是否更新全局里程碑（update_main）
+
+你可以在提示词里直接要求：
+
+"每次完成一个里程碑都要调用 gcc_commit，且提供：contribution（本次完成点）、log_entries（关键观察/行动）、metadata_updates（文件结构变化）、必要时 update_main（更新计划）。"
+
 ## HTTP API
 
 ### POST /init

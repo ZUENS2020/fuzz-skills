@@ -92,7 +92,16 @@ class ResetRequest(BaseModel):
 def _path(root: str) -> Path:
     base = os.environ.get("GCC_DATA_ROOT")
     if base:
-        return (Path(base) / root.lstrip("/\\")).resolve()
+        # Extract project name from the path for cleaner volume structure
+        # e.g., "J:\fuzz-skills" -> "fuzz-skills"
+        # e.g., "/home/user/projects/my-app" -> "my-app"
+        project_name = Path(root).name
+        # Fallback to parent name if project_name is empty or just a drive letter
+        if not project_name or project_name.endswith(":"):
+            project_name = Path(root).parent.name
+        if not project_name:
+            project_name = "project"
+        return (Path(base) / project_name).resolve()
     return Path(root).expanduser().resolve()
 
 
