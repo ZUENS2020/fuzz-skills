@@ -89,19 +89,14 @@ class ResetRequest(BaseModel):
     session_id: Optional[str] = None
 
 
-def _path(root: str) -> Path:
+def _path(root: str, session_id: Optional[str] = None) -> Path:
     base = os.environ.get("GCC_DATA_ROOT")
     if base:
-        # Extract project name from the path for cleaner volume structure
-        # e.g., "J:\fuzz-skills" -> "fuzz-skills"
-        # e.g., "/home/user/projects/my-app" -> "my-app"
-        project_name = Path(root).name
-        # Fallback to parent name if project_name is empty or just a drive letter
-        if not project_name or project_name.endswith(":"):
-            project_name = Path(root).parent.name
-        if not project_name:
-            project_name = "project"
-        return (Path(base) / project_name).resolve()
+        # Use session_id as the directory name for container isolation
+        # Each container gets its own data directory under /data/<session_id>/
+        from .storage import normalize_session_id
+        normalized_session = normalize_session_id(session_id)
+        return (Path(base) / normalized_session).resolve()
     return Path(root).expanduser().resolve()
 
 
@@ -113,7 +108,7 @@ def health() -> Dict[str, str]:
 @app.post("/init")
 def init(req: InitRequest) -> Dict[str, Any]:
     try:
-        return commands.init(_path(req.root), req.goal, req.todo, req.session_id)
+        return commands.init(_path(req.root, req.session_id), req.goal, req.todo, req.session_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -121,7 +116,7 @@ def init(req: InitRequest) -> Dict[str, Any]:
 @app.post("/branch")
 def create_branch(req: BranchRequest) -> Dict[str, Any]:
     try:
-        return commands.branch(_path(req.root), req.branch, req.purpose, req.session_id)
+        return commands.branch(_path(req.root, req.session_id), req.branch, req.purpose, req.session_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -129,7 +124,7 @@ def create_branch(req: BranchRequest) -> Dict[str, Any]:
 @app.post("/log")
 def append_log(req: LogRequest) -> Dict[str, Any]:
     try:
-        return commands.log(_path(req.root), req.branch, req.entries, req.session_id)
+        return commands.log(_path(req.root, req.session_id), req.branch, req.entries, req.session_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -138,7 +133,7 @@ def append_log(req: LogRequest) -> Dict[str, Any]:
 def commit(req: CommitRequest) -> Dict[str, Any]:
     try:
         return commands.commit(
-            _path(req.root),
+            _path(req.root, req.session_id),
             req.branch,
             req.contribution,
             req.purpose,
@@ -155,7 +150,7 @@ def commit(req: CommitRequest) -> Dict[str, Any]:
 def merge(req: MergeRequest) -> Dict[str, Any]:
     try:
         return commands.merge(
-            _path(req.root),
+            _path(req.root, req.session_id),
             req.source_branch,
             req.target_branch,
             req.summary,
@@ -169,7 +164,7 @@ def merge(req: MergeRequest) -> Dict[str, Any]:
 def context(req: ContextRequest) -> Dict[str, Any]:
     try:
         return commands.context(
-            _path(req.root),
+            _path(req.root, req.session_id),
             req.branch,
             req.commit_id,
             req.log_tail,
@@ -183,7 +178,7 @@ def context(req: ContextRequest) -> Dict[str, Any]:
 @app.post("/history")
 def history(req: HistoryRequest) -> Dict[str, Any]:
     try:
-        return commands.history(_path(req.root), req.limit, req.session_id)
+        return commands.history(_path(req.root, req.session_id), req.limit, req.session_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -191,7 +186,7 @@ def history(req: HistoryRequest) -> Dict[str, Any]:
 @app.post("/diff")
 def diff(req: DiffRequest) -> Dict[str, Any]:
     try:
-        return commands.diff(_path(req.root), req.from_ref, req.to_ref, req.session_id)
+        return commands.diff(_path(req.root, req.session_id), req.from_ref, req.to_ref, req.session_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -199,7 +194,7 @@ def diff(req: DiffRequest) -> Dict[str, Any]:
 @app.post("/show")
 def show(req: ShowRequest) -> Dict[str, Any]:
     try:
-        return commands.show(_path(req.root), req.ref, req.path, req.session_id)
+        return commands.show(_path(req.root, req.session_id), req.ref, req.path, req.session_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -207,7 +202,7 @@ def show(req: ShowRequest) -> Dict[str, Any]:
 @app.post("/reset")
 def reset(req: ResetRequest) -> Dict[str, Any]:
     try:
-        return commands.reset(_path(req.root), req.ref, req.mode, req.confirm, req.session_id)
+        return commands.reset(_path(req.root, req.session_id), req.ref, req.mode, req.confirm, req.session_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

@@ -175,15 +175,14 @@ def _server_url() -> str:
 
 
 def _default_session_id() -> str:
+    # Priority 1: Explicit environment variable (GCC_SESSION_ID)
     env_value = os.environ.get(SESSION_ID_ENV)
     if env_value:
         return env_value
 
-    # Try to get container ID from Docker environment
-    # /proc/self/cgroup contains container ID in Docker
-    # Container ID is typically first 12 chars of the hostname in containers
+    # Priority 2: Try to get container ID from Docker environment
+    # Docker sets hostname to container ID
     try:
-        # Method 1: Check hostname (Docker sets hostname to container ID)
         hostname = os.environ.get("HOSTNAME", "")
         if hostname and len(hostname) >= 12:
             # Container IDs are typically 64 hex chars, use first 12
@@ -194,7 +193,7 @@ def _default_session_id() -> str:
     except Exception:
         pass
 
-    # Fallback to process ID
+    # Priority 3: Fallback to process ID
     global DEFAULT_SESSION_ID
     if DEFAULT_SESSION_ID is None:
         DEFAULT_SESSION_ID = f"mcp-{os.getpid()}"

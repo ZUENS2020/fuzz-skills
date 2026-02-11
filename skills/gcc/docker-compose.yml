@@ -7,6 +7,9 @@ services:
       - gcc_data:/data
     environment:
       - GCC_DATA_ROOT=/data
+      # Optional: Set a custom session ID for this container
+      # If not set, will use container hostname (container ID)
+      # - GCC_SESSION_ID=my-custom-session
 
 volumes:
   gcc_data:

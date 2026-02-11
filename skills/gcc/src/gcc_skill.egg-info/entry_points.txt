@@ -1,3 +1,0 @@
-[console_scripts]
-gcc-mcp = gcc_skill.mcp_proxy:main
-gcc-skill = gcc_skill.server:main
