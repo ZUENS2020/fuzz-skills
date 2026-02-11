@@ -1,0 +1,29 @@
+[project]
+name = "gcc-skill"
+version = "0.1.0"
+description = "HTTP API server implementing Git-Context-Controller (GCC) memory system"
+requires-python = ">=3.9"
+dependencies = [
+  "fastapi>=0.110.0",
+  "httpx>=0.27.0",
+  "uvicorn>=0.27.0",
+  "pydantic>=2.5.0",
+  "PyYAML>=6.0.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4.0",
+  "httpx>=0.27.0"
+]
+
+[project.scripts]
+gcc-skill = "gcc_skill.server:main"
+gcc-mcp = "gcc_skill.mcp_proxy:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=68.0.0"]
+build-backend = "setuptools.build_meta"
